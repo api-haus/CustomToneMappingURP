@@ -7,18 +7,19 @@ namespace CustomToneMapping.Baker.AgX
 
         public static AgXLookConfig GetPreset(AgXLookPreset preset)
         {
-            return preset switch
+            if (preset == AgXLookPreset.None)
             {
-                AgXLookPreset.Punchy => new AgXLookConfig
-                {
-                    LookPreset = AgXLookPreset.Punchy,
-                    Intensity = 1.0f
-                },
-                _ => new AgXLookConfig
+                return new AgXLookConfig
                 {
                     LookPreset = AgXLookPreset.None,
                     Intensity = 0.0f
-                }
+                };
+            }
+
+            return new AgXLookConfig
+            {
+                LookPreset = preset,
+                Intensity = 1.0f
             };
         }
     }

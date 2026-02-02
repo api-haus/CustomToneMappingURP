@@ -61,5 +61,10 @@ namespace CustomToneMapping.Baker.AgX
 
         public static readonly float3 Rec2020LuminanceCoeffs =
             new(0.2589235355689848f, 0.6104985346066525f, 0.13057792982436284f);
+
+        public static readonly float3 Bt709LuminanceCoeffs = new(0.2126f, 0.7152f, 0.0722f);
+
+        // Pivot point for contrast looks in AgX Log space (0.18 linear = 0.4 in AgX Log)
+        public const float ContrastLookPivot = 0.4f;
     }
 }

@@ -6,6 +6,10 @@ namespace CustomToneMapping.Baker.AgX
     [BurstCompile]
     public static class AgXLook
     {
+        // AgX Log encoding constants
+        private const float AgxLogMinExp = -12.47393f;
+        private const float AgxLogMaxExp = 12.5260688117f;
+
         // Punchy Shadows: { rgb:[0.2,0.2,0.2], master:0.35, start:0.4, pivot:0.1 }
 
         // Knots from start=0.4, pivot=0.1
@@ -118,25 +122,84 @@ namespace CustomToneMapping.Baker.AgX
             return res;
         }
 
+        private static float3 OcioGradingPrimaryLog(float3 rgb, float contrast, float saturation)
+        {
+            const float pivot = AgXConstants.ContrastLookPivot;
+
+            // Step 1: Apply contrast around pivot
+            var result = (rgb - pivot) * contrast + pivot;
+
+            // Step 2: Apply saturation using BT.709 luma
+            var luma = math.dot(result, AgXConstants.Bt709LuminanceCoeffs);
+            result = luma + saturation * (result - luma);
+
+            return result;
+        }
+
+        private static float3 OcioGreyscale(float3 agxLog)
+        {
+            // Step 1: Decode from AgX Log to linear
+            var linear = ColorUtility.Log2Decode(agxLog, AgxLogMinExp, AgxLogMaxExp);
+
+            // Step 2: Desaturate using Rec.2020 luma
+            var grey = math.dot(linear, AgXConstants.Rec2020LuminanceCoeffs);
+
+            // Step 3: Re-encode to AgX Log
+            return ColorUtility.Log2Encode(new float3(grey), AgxLogMinExp, AgxLogMaxExp);
+        }
+
         public static float3 Apply(float3 rgb, AgXLookConfig config)
         {
-            if (config is { LookPreset: AgXLookPreset.Punchy, Intensity: > 0f })
+            if (config.Intensity <= 0f || config.LookPreset == AgXLookPreset.None)
+                return rgb;
+
+            // Encode to AgX Log space
+            var agxLog = ColorUtility.Log2Encode(rgb, AgxLogMinExp, AgxLogMaxExp);
+            agxLog = math.saturate(agxLog);
+            var previousAgxLog = agxLog;
+
+            switch (config.LookPreset)
             {
-                // The log space we use here is based on the AgX look profile in OCIO
-                var agxLog = ColorUtility.Log2Encode(rgb, -12.47393f, 12.5260688117f);
-                agxLog = math.saturate(agxLog);
+                case AgXLookPreset.Punchy:
+                    agxLog = OcioPunchyShadows(agxLog);
+                    agxLog = OcioCdlPower(agxLog, 1.0912f);
+                    break;
 
-                var previousAgxLog = agxLog;
+                case AgXLookPreset.Greyscale:
+                    agxLog = OcioGreyscale(agxLog);
+                    break;
 
-                agxLog = OcioPunchyShadows(agxLog);
-                agxLog = OcioCdlPower(agxLog, 1.0912f);
+                case AgXLookPreset.VeryHighContrast:
+                    agxLog = OcioGradingPrimaryLog(agxLog, 1.57f, 0.9f);
+                    break;
 
-                agxLog = math.lerp(previousAgxLog, agxLog, config.Intensity);
+                case AgXLookPreset.HighContrast:
+                    agxLog = OcioGradingPrimaryLog(agxLog, 1.4f, 0.95f);
+                    break;
 
-                rgb = ColorUtility.Log2Decode(agxLog, -12.47393f, 12.5260688117f);
+                case AgXLookPreset.MediumHighContrast:
+                    agxLog = OcioGradingPrimaryLog(agxLog, 1.2f, 1.0f);
+                    break;
+
+                case AgXLookPreset.BaseContrast:
+                    agxLog = OcioGradingPrimaryLog(agxLog, 1.0f, 1.0f);
+                    break;
+
+                case AgXLookPreset.MediumLowContrast:
+                    agxLog = OcioGradingPrimaryLog(agxLog, 0.9f, 1.05f);
+                    break;
+
+                case AgXLookPreset.LowContrast:
+                    agxLog = OcioGradingPrimaryLog(agxLog, 0.8f, 1.1f);
+                    break;
+
+                case AgXLookPreset.VeryLowContrast:
+                    agxLog = OcioGradingPrimaryLog(agxLog, 0.7f, 1.15f);
+                    break;
             }
 
-            return rgb;
+            agxLog = math.lerp(previousAgxLog, agxLog, config.Intensity);
+            return ColorUtility.Log2Decode(agxLog, AgxLogMinExp, AgxLogMaxExp);
         }
     }
 }

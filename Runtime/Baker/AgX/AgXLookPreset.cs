@@ -3,6 +3,14 @@ namespace CustomToneMapping.Baker.AgX
     public enum AgXLookPreset
     {
         None,
-        Punchy
+        Punchy,
+        Greyscale,
+        VeryHighContrast,
+        HighContrast,
+        MediumHighContrast,
+        BaseContrast,
+        MediumLowContrast,
+        LowContrast,
+        VeryLowContrast
     }
 }
