@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.0 - 2026-02-02
+
+### Added
+- All remaining AgX presets used in Blender
+
 ## 1.1.0 - 2025-11-15
 
 ### Added
